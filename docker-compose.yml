@@ -1,0 +1,45 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stream-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://stream_user:stream_pass@db:5432/stream_db
+      - TWITCH_EVENTSUB_SECRET=dev_twitch_secret
+      - FACEBOOK_APP_SECRET=dev_fb_secret
+      - FACEBOOK_VERIFY_TOKEN=dev_fb_verify_token
+      - STREAMLABS_SECRET_TOKEN=dev_streamlabs_token
+      - SESSION_GRACE_PERIOD_MS=180000
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: stream-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stream_user
+      POSTGRES_PASSWORD: stream_pass
+      POSTGRES_DB: stream_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - stream_pgdata:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stream_user -d stream_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  stream_pgdata:
